@@ -1,0 +1,173 @@
+/**
+ * <p>Copyright: Copyright (c) 2014</p>
+ * <p>Company: UMP Technology Co. Ltd</p>
+ * <p>2014-5-4</p>
+ * @author Zhang Wensheng
+ */
+package com.umpay.sc.plat.dao.impl;
+
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.session.RowBounds;
+import org.apache.ibatis.session.SqlSession;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.umpay.sc.plat.dao.BaseDao;
+import com.umpay.sc.plat.dwz.Page;
+
+
+/**
+ * desc:
+ * <p>author: Zhang Wensheng </p>
+ * date: 2014-5-4
+ */
+public class BaseDaoImpl<T> implements BaseDao<T> {
+
+	protected static final String POSTFIX_FIND = ".Find";
+
+	protected static final String POSTFIX_GET = ".Get";
+
+	protected static final String POSTFIX_INSERT = ".Insert";
+
+	protected static final String POSTFIX_UPDATE = ".Update";
+
+	protected static final String POSTFIX_DELETE = ".Delete";
+
+	@Autowired
+	private SqlSession sqlSession;
+
+	protected Class<T> entityClass;
+	protected String entityClassName;
+
+	@SuppressWarnings("unchecked")
+	public BaseDaoImpl(){
+		entityClass = (Class<T>) getSuperClassGenricType(getClass(), 0);
+		this.entityClassName = entityClass.getSimpleName();
+	}
+
+	@SuppressWarnings("rawtypes")
+	private static Class getSuperClassGenricType(Class clazz, int index) {
+		Type genType = clazz.getGenericSuperclass();
+		if (!(genType instanceof ParameterizedType)) {
+			return Object.class;
+		}
+		Type[] params = ((ParameterizedType) genType).getActualTypeArguments();
+		if (index >= params.length || index < 0) {
+			return Object.class;
+		}
+		if (!(params[index] instanceof Class)) {
+			return Object.class;
+		}
+		return (Class) params[index];
+	}
+
+	@Override
+	public int insert(String statement, T t) {
+		return sqlSession.insert(entityClassName+statement, t);
+	}
+
+	@Override
+	public int insert(T t) {
+		return insert(POSTFIX_INSERT, t);
+	}
+
+	@Override
+	public List<T> findAll(String statement, T t) {
+		return sqlSession.selectList(entityClassName+statement, t);
+	}
+
+	@Override
+	public List<T> findAll(T t) {
+		return findAll(POSTFIX_FIND, t);
+	}
+
+	@Override
+	public List<T> findPage(String statement, Page page, Map params) {
+		Integer totalCount = (Integer) sqlSession.selectOne(entityClassName+statement+"_count",params);
+		List<T> rsList = new ArrayList<T>();
+		if (totalCount != null&& totalCount.intValue()>0){
+			page.setTotalCount(totalCount);
+			RowBounds rowBounds = new RowBounds((page.getPlainPageNum()-1)*page.getNumPerPage(), page.getNumPerPage());
+			rsList =sqlSession.selectList(entityClassName+statement, params, rowBounds);
+		}
+		return rsList;
+	}
+
+	@Override
+	public List<T> findPage(Page page, Map params) {
+		return findPage(POSTFIX_FIND, page, params);
+	}
+
+	@Override
+	public T selectOne(String statement, T t) {
+		return (T)sqlSession.selectOne(entityClassName+statement, t);
+	}
+
+	@Override
+	public T selectOne(T t) {
+		return (T)selectOne(POSTFIX_GET, t);
+	}
+
+	@Override
+	public int update(String statement, T t) {
+		return sqlSession.update(entityClassName+statement, t);
+
+	}
+
+	@Override
+	public int update(T t) {
+		return this.update(POSTFIX_UPDATE, t);
+	}
+
+	@Override
+	public int delete(String statement, T t) {
+		return sqlSession.delete(entityClassName+statement, t);
+	}
+
+	@Override
+	public int delete(T t) {
+		return this.delete(POSTFIX_DELETE, t);
+	}
+
+	/*
+	 * desc:
+	 * @see com.umpay.sc.plat.core.mapper.BaseMapper#clearCache()
+	 */
+	@Override
+	public void clearCache() {
+		sqlSession.clearCache();
+	}
+
+	/*
+	 * desc:
+	 * (non-Javadoc)
+	 * @see com.umpay.sc.plat.core.dao.BaseDao#getSqlSession()
+	 */
+	@Override
+	public SqlSession getSqlSession() {
+		return sqlSession;
+	}
+
+	/*
+	 * desc:
+	 * (non-Javadoc)
+	 * @see com.umpay.sc.plat.core.dao.BaseDao#findPage(java.lang.String, com.umpay.sc.plat.core.dwz.Page, java.lang.Object)
+	 */
+	@Override
+	public List<T> findPage(String statement, Page page, T t) {
+		Integer totalCount = (Integer) sqlSession.selectOne(entityClassName+statement+"_count",t);
+		List<T> rsList = new ArrayList<T>();
+		if (totalCount != null&& totalCount.intValue()>0){
+			page.setTotalCount(totalCount);
+			RowBounds rowBounds = new RowBounds((page.getPlainPageNum()-1)*page.getNumPerPage(), page.getNumPerPage());
+			rsList = sqlSession.selectList(entityClassName+statement, t, rowBounds);
+		}
+		return (List<T>)rsList;
+	}
+
+
+}
